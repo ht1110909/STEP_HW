@@ -22,4 +22,8 @@ Another reason can be a hash table takes more memory space than a tree. While a 
 - When a pair of <URL, Web page> is given, find if the given pair is contained in the cache or not
 - If the pair is not found, insert the pair into the cache after evicting the least recently accessed pair
 
-The algorithm can have both a hash table and a list that works as a queue structure (FIFO). The queue has a size of number of pairs we want to hold in a cashe. When a pair is added, it checks if it is already in the cashe using a hash table (O(1)). If not, it gets the first element of the queue and delete that element from both the queue and the hash table (both O(1)). Then, add the new pair in the hash table and the queue (O(1)). 
+---- finding the element in the queue takes at most O(M) where M is the limit ----
+The algorithm can have both a hash table and a linkedlist that works as a queue structure (FIFO). Here, there's a pointer to the last and first element in order to make O(1) insertion to the end possible.When a pair is added, it checks if it is already in the cashe using a hash table (O(1)). If not, it gets the first element of the queue and delete that element from both the queue and the hash table (both O(1)). Then, add the new pair in the hash table and the queue (O(1)). If the element is already in the queue, then it finds (O(M)) and removes that element (since it is a linkedlist this is O(1)) then add the element in the last.
+
+--- storing a new key item that stores various information ---
+Another idea is to store an element that stores previous and next page as a key so that it takes O(1) to look up in a hash table if an element that you want to exist, and if it does you can change the prev and next pointer of the (prev, next) pages of the element you want to cache (this takes O(1)). If the element doesn't exist in a hashable then it can remove the first element in the hashtable which can be tracked with a pointer. 
