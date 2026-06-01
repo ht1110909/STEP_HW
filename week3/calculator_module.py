@@ -31,6 +31,14 @@ def read_div(line, index):
     token = {'type': 'DIVIDE'}
     return token, index + 1
 
+def read_open(line, index):
+    token = {'type': 'LPAREN'}
+    return token, index+1
+
+def read_close(line, index):
+    token = {'type': 'RPAREN'}
+    return token, index+1
+
 def tokenize(line):
     tokens = []
     index = 0
@@ -45,6 +53,10 @@ def tokenize(line):
             (token, index) = read_mul(line, index)
         elif line[index] == '/':
             (token, index) = read_div(line, index)
+        elif line[index] == '(':
+            (token, index) = read_open(line, index)
+        elif line[index] == ')':
+            (token, index) = read_close(line, index)
         else:
             print('Invalid character found: ' + line[index])
             exit(1)
@@ -57,9 +69,10 @@ def evaluate(tokens):
     highOrder keeps track on if it should do div and mul or add and sub
     """
     tokens = evaluate_high_order(tokens)
-    answer = 0
     tokens.insert(0, {'type': 'PLUS'}) # Insert a dummy '+' token
+    answer = 0
     index = 1
+    print(tokens)
     #first stage of evaluation where it process higher order operation (div and mul)
     while index < len(tokens):
         if tokens[index]['type'] == 'NUMBER':
@@ -68,7 +81,7 @@ def evaluate(tokens):
             elif tokens[index - 1]['type'] == 'MINUS':
                 answer -= tokens[index]['number']
             else:
-                print('Invalid syntax')
+                print(f'Invalid syntax in low order eval{tokens[index]}')
                 exit(1)
         index += 1
     return answer
@@ -76,32 +89,56 @@ def evaluate(tokens):
 
 def evaluate_high_order(tokens):
     """
-    evalaute high order operations(div and mul)
+    evalaute high order operations(div and mul and paren)
     return new tokens with just lower order (add and sub)
     """
     index = 0
     new_tokens = []
     while index < len(tokens):
+        print(new_tokens)
         #if we hit the high order operation, we process
-        if tokens[index]['type'] in ('DIVIDE', 'MULTIPLY'):
-            #get the first number of the operation
-            first_num = new_tokens.pop()['number']
-            second_num = tokens[index+1]['number']
-            #evaluate the number and append on new_tokens list
-            #make sure it returns the dictionary form not just a number
-            if tokens[index]['type'] == 'DIVIDE':
-                new_tokens.append({'type': 'NUMBER', 'number': first_num/second_num})
+        if tokens[index]['type'] == 'NUMBER':
+            if new_tokens and new_tokens[-1]['type'] in ('DIVIDE', 'MULTIPLY'):
+                operand = new_tokens.pop()
+                #get the first number of the operation
+                first_num = new_tokens.pop()['number']
+                second_num = tokens[index]['number']
+                #evaluate the number and append on new_tokens list
+                #make sure it returns the dictionary form not just a number
+                if operand['type'] == 'DIVIDE':
+                    new_tokens.append({'type': 'NUMBER', 'number': first_num/second_num})
+                else:
+                    new_tokens.append({'type': 'NUMBER', 'number': first_num*second_num})
+            #if the operand is not mul or div it's just a number so add
             else:
-                new_tokens.append({'type': 'NUMBER', 'number': first_num*second_num})
-            index+=2
+                new_tokens.append(tokens[index])
+            index+=1
+        #if we hit LPAREN then recursively call evaluate on whatever is inside
+        elif tokens[index]['type'] == 'LPAREN':
+            index+=1
+            sub_exp = []
+            depth = 1 #keep track of how many LPAREN we have encountered
+            while depth > 0:
+                #going into one deeper depth
+                if tokens[index]['type'] == 'LPAREN':
+                    depth +=1
+                #exiting one depth since it closes
+                elif tokens[index]['type'] == 'RPAREN':
+                    depth -= 1
+                if depth > 0:
+                    sub_exp.append(tokens[index])
+                index+=1
+            #put the value in the new_tokens to continue
+            new_tokens.append({'type': 'NUMBER', 'number': evaluate(sub_exp)})
         else:
             #if the operation is low level continue
-            if tokens[index]['type'] in ('NUMBER', "PLUS", 'MINUS'):
+            if tokens[index]['type'] in ('PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE'):
                 new_tokens.append(tokens[index])
             else:
-                print(f'Invalid syntax {tokens[index]}')
+                print(f'Invalid syntax in high order eval{tokens[index]}')
                 exit(1)
             index += 1
+        
     return new_tokens
 
 
@@ -119,6 +156,7 @@ def test(line):
 def run_test():
     print("==== Test started! ====")
 
+    """
     #add
     test("1+2")
     test("1.0+2")
@@ -128,6 +166,7 @@ def run_test():
     test("1-2")
     test("2.0-2")
     test("1-2.0")
+    test("1-2-3")
 
     #div
     test("1/2")
@@ -148,6 +187,12 @@ def run_test():
     test("1.0*2.0/3.0+4-5/2.0")
     test("1.0-2.0+3.0/4-5*2.0")
     test("1.0+2.0/3.0+4*5*2.0")
+    test("1.0*2.0+3.0*4")
+
+    #paren
+    test("(1+2)/3")
+    """
+    test("(3.0+4*(2-1))/5")
     print("==== Test finished! ====\n")
 
 run_test()
