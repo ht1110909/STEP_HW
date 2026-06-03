@@ -68,34 +68,78 @@ def evaluate(tokens):
     evaluate the given tokens
     highOrder keeps track on if it should do div and mul or add and sub
     """
-    tokens = evaluate_high_order(tokens)
-    tokens.insert(0, {'type': 'PLUS'}) # Insert a dummy '+' token
-    answer = 0
-    index = 1
-    print(tokens)
-    #first stage of evaluation where it process higher order operation (div and mul)
+    process_paren(tokens)
+    process_divmul(tokens)
+    process_addsub(tokens)
+    return tokens[0]['number']
+
+def process_paren(tokens):
+    index = 0
     while index < len(tokens):
-        if tokens[index]['type'] == 'NUMBER':
-            if tokens[index - 1]['type'] == 'PLUS':
-                answer += tokens[index]['number']
-            elif tokens[index - 1]['type'] == 'MINUS':
-                answer -= tokens[index]['number']
+        #find the first closing parentheses
+        if tokens[index]['type'] == 'RPAREN':
+            subindex = index
+            #going backward to find the first open paren == matching lparen
+            while tokens[subindex]['type'] != 'LPAREN':
+                subindex -= 1
+            #evaluate the value in the paren
+            result = evaluate(tokens[subindex+1:index])
+            #change the paren stuff to the number
+            tokens[subindex:index+1] = [{'type': 'NUMBER', 'number': result}]
+            #iterate through the tokens again
+            index = 0
+        else:
+            index+=1
+
+def process_divmul(tokens):
+    index = 0
+    while index < len(tokens):
+        if tokens[index]['type'] in ('MULTIPLY', 'DIVIDE'):
+            #grab the neighboring numbers to compute
+            first_num = tokens[index-1]['number']
+            #since we process paren first we know it's always a number
+            second_num = tokens[index+1]['number']
+            if tokens[index]['type'] == 'MULTIPLY':
+                result = first_num*second_num
             else:
-                print(f'Invalid syntax in low order eval{tokens[index]}')
-                exit(1)
-        index += 1
-    return answer
+                result = first_num/second_num
+            #change the three tokens into one computed value
+            tokens[index-1:index+2] = [{'type': 'NUMBER', 'number': result}]
+            #since the tokens got mutated, start scanning from the beginning
+            index = 0
+        else:
+            index+=1
 
 
+def process_addsub(tokens):
+    index = 0
+    while index < len(tokens):
+        if tokens[index]['type'] in ('PLUS', 'MINUS'):
+            #grab the neighboring numbers to compute
+            first_num = tokens[index-1]['number']
+            #since we process paren first we know it's always a number
+            second_num = tokens[index+1]['number']
+            if tokens[index]['type'] == 'PLUS':
+                result = first_num+second_num
+            else:
+                result = first_num-second_num
+            #change the three tokens into one computed value
+            tokens[index-1:index+2] = [{'type': 'NUMBER', 'number': result}]
+            #since the tokens got mutated, start scanning from the beginning
+            index = 0
+        else:
+            index+=1
+
+"""
 def evaluate_high_order(tokens):
-    """
+
     evalaute high order operations(div and mul and paren)
     return new tokens with just lower order (add and sub)
-    """
+
     index = 0
     new_tokens = []
     while index < len(tokens):
-        print(new_tokens)
+        print(f'{tokens[index]}, {index}')
         #if we hit the high order operation, we process
         if tokens[index]['type'] == 'NUMBER':
             if new_tokens and new_tokens[-1]['type'] in ('DIVIDE', 'MULTIPLY'):
@@ -103,9 +147,12 @@ def evaluate_high_order(tokens):
                 #get the first number of the operation
                 first_num = new_tokens.pop()['number']
                 second_num = tokens[index]['number']
+                print(first_num)
+                print(second_num)
                 #evaluate the number and append on new_tokens list
                 #make sure it returns the dictionary form not just a number
                 if operand['type'] == 'DIVIDE':
+
                     new_tokens.append({'type': 'NUMBER', 'number': first_num/second_num})
                 else:
                     new_tokens.append({'type': 'NUMBER', 'number': first_num*second_num})
@@ -115,6 +162,7 @@ def evaluate_high_order(tokens):
             index+=1
         #if we hit LPAREN then recursively call evaluate on whatever is inside
         elif tokens[index]['type'] == 'LPAREN':
+            prev_index = index-1
             index+=1
             sub_exp = []
             depth = 1 #keep track of how many LPAREN we have encountered
@@ -126,10 +174,14 @@ def evaluate_high_order(tokens):
                 elif tokens[index]['type'] == 'RPAREN':
                     depth -= 1
                 if depth > 0:
+                    print(tokens[index])
                     sub_exp.append(tokens[index])
                 index+=1
+            print(index)
+            print(evaluate(sub_exp))
             #put the value in the new_tokens to continue
             new_tokens.append({'type': 'NUMBER', 'number': evaluate(sub_exp)})
+
         else:
             #if the operation is low level continue
             if tokens[index]['type'] in ('PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE'):
@@ -138,10 +190,10 @@ def evaluate_high_order(tokens):
                 print(f'Invalid syntax in high order eval{tokens[index]}')
                 exit(1)
             index += 1
-        
+
     return new_tokens
 
-
+"""
 def test(line):
     tokens = tokenize(line)
     actual_answer = evaluate(tokens)
@@ -156,7 +208,7 @@ def test(line):
 def run_test():
     print("==== Test started! ====")
 
-    """
+
     #add
     test("1+2")
     test("1.0+2")
@@ -168,6 +220,7 @@ def run_test():
     test("1-2.0")
     test("1-2-3")
 
+
     #div
     test("1/2")
     test("1.0/2")
@@ -178,10 +231,12 @@ def run_test():
     test("1*2.0")
     test("1.0*2.0")
     test("1.0*2")
+    test("0.5*0.5")
     #when the answer becomes negative
     test("1*2.0-3")
     #check the ordering
     test("1+2.0*3")
+    test("10-2*3+1")
 
     #mix of everything
     test("1.0*2.0/3.0+4-5/2.0")
@@ -191,8 +246,16 @@ def run_test():
 
     #paren
     test("(1+2)/3")
-    """
     test("(3.0+4*(2-1))/5")
+    test("(1+2)/3*(4-5)")
+    test("(1+(2-4))/3")
+    test("4*(2*1)")
+
+    #edge
+    test("42")
+    test("(42)")
+    test("0*0")
+    test("0+0")
     print("==== Test finished! ====\n")
 
 run_test()
