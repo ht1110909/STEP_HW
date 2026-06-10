@@ -110,12 +110,60 @@ class Wikipedia:
         #given path with ids, return path with titles
         return [self.titles[id] for id in id_path]
 
+    def did_converge(self, page_rank_prev, page_rank):
+        #return true if it meets the convergence criteria which is the following
+        #∑(new_pagerank[i] - old_pagerank[i])^2 < 0.01
+        sum_diff = 0
+        for id, rank in page_rank_prev.items():
+            sum_diff += (page_rank[id]-rank)**2
+        print(sum_diff)
+        return sum_diff < 0.01
+
+    def get_popular(self, page_rank):
+        #get the highest rank
+        max_val = max(page_rank.values())
+        #return the list of titles that has the highest page rank
+        return [self.titles[page_id] for page_id, rank in page_rank.items() if rank == max_val]
+
     # Homework #2: Calculate the page ranks and print the most popular pages.
     def find_most_popular_pages(self):
-        #------------------------#
-        # Write your code here!  #
-        #------------------------#
-        pass
+        #initially assign 1.0 for each node (link)
+        page_rank = {id: 1.0 for id in self.titles}
+        num_nodes = len(page_rank)
+
+        #keep trying until it converges
+        while True:
+            new_rank = {id: 0 for id in self.titles}
+            #avoids O(N^2)
+            #keep track of how much each needs to be added for 15% (neigbor case)
+            neighbor_add_all = 0
+            #keep track of how much each needs to be added for 100% (no neighbor case)
+            non_neighbor_add_all = 0
+            for id, rank in page_rank.items():
+                neighbors = self.links[id]
+                #if there are neigbors to 分配 0.85 of rank
+                if neighbors:
+                    for neighbor_id in neighbors:
+                        #85%は隣接ノードに均等に分配 O(E)
+                        num_neighbor = len(neighbors)
+                        new_rank[neighbor_id] += 0.85*rank/num_neighbor
+                    #15%は全ノードに分配 later
+                    neighbor_add_all+= 0.15*rank
+
+                #if no neighbors, equally provide rank to each node
+                else:
+                    non_neighbor_add_all += rank
+
+            for new_id in new_rank:
+                new_rank[new_id] += neighbor_add_all/num_nodes
+                new_rank[new_id] += non_neighbor_add_all/num_nodes
+
+            #make sure the sum of all values did not change
+            assert abs(sum(new_rank.values()) - num_nodes) < 1e-4 #question: what is the best threhsold for this
+            if self.did_converge(page_rank, new_rank):
+                print(self.get_popular(new_rank))
+                return
+            page_rank = new_rank
 
 
     # Homework #3 (optional):
@@ -163,16 +211,20 @@ if __name__ == "__main__":
 
     # Homework #1
     #direct path
-    print(wikipedia.find_shortest_path("A", "B"))
+    #print(wikipedia.find_shortest_path("A", "B"))
     #two steps
-    print(wikipedia.find_shortest_path("A", "E"))
+    #print(wikipedia.find_shortest_path("A", "E"))
     #multiple paths
-    print(wikipedia.find_shortest_path("A", "D"))
+    #print(wikipedia.find_shortest_path("A", "D"))
+    """
     print(wikipedia.find_shortest_path("寺沢武一", "高橋葉介"))
     print(wikipedia.find_shortest_path("検索エンジン", "アース・ウィンド・アンド・ファイアー"))
     print(wikipedia.find_shortest_path("渋谷", "パレートの法則"))
+    """
 
     # Homework #2
     wikipedia.find_most_popular_pages()
+    #answer for small was ['C', 'D']
+    #answer for medium was ['英語']
     # Homework #3 (optional)
     wikipedia.find_longest_path("渋谷", "池袋")
